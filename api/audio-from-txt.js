@@ -1,5 +1,6 @@
 const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
-const MAX_TEXT_BYTES = Math.ceil(MAX_AUDIO_BYTES * 4 / 3) + 4096;
+const MAX_TRANSCRIPT_BYTES = 64 * 1024;
+const MAX_TEXT_BYTES = Math.ceil((MAX_AUDIO_BYTES + MAX_TRANSCRIPT_BYTES) * 4 / 3) + 4096;
 const ALLOWED_HOST = "uploads-tiflux.s3.amazonaws.com";
 
 function json(res, status, payload) {
@@ -13,23 +14,35 @@ function parseAudioText(text) {
   if (Buffer.byteLength(text, "utf8") > MAX_TEXT_BYTES) {
     throw Object.assign(new Error("Arquivo muito grande."), { status: 413 });
   }
-  const match = text.match(/^TIFLUX_AUDIO_V1\r?\nMIME: ([^\r\n]+)\r?\nFILENAME: ([^\r\n]+)\r?\nBASE64: ([\s\S]*)$/);
+  const match = text.match(/^TIFLUX_AUDIO_V(1|2)\r?\nMIME: ([^\r\n]+)\r?\nFILENAME: ([^\r\n]+)\r?\n(?:TRANSCRIPT_BASE64: ([^\r\n]*)\r?\n)?BASE64: ([\s\S]*)$/);
   if (!match) throw Object.assign(new Error("Formato de áudio inválido."), { status: 422 });
+  if ((match[1] === "2") !== (match[4] !== undefined)) {
+    throw Object.assign(new Error("Transcrição ausente ou formato inválido."), { status: 422 });
+  }
 
-  const mime = match[1].trim().toLowerCase();
+  const mime = match[2].trim().toLowerCase();
   if (!/^audio\/[a-z0-9.+-]+$/.test(mime)) {
     throw Object.assign(new Error("Tipo de áudio inválido."), { status: 422 });
   }
-  const filename = match[2].trim().replace(/[\\/\r\n";]/g, "_").slice(0, 120) || "audio.webm";
-  const base64 = match[3].replace(/\s/g, "");
-  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(base64)) {
+  const filename = match[3].trim().replace(/[\\/\r\n";]/g, "_").slice(0, 120) || "audio.webm";
+  const base64 = match[5].replace(/\s/g, "");
+  if (base64.length % 4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) {
     throw Object.assign(new Error("Base64 inválido."), { status: 422 });
   }
   const audio = Buffer.from(base64, "base64");
   if (!audio.length || audio.length > MAX_AUDIO_BYTES) {
     throw Object.assign(new Error("Áudio vazio ou acima de 4 MB."), { status: 413 });
   }
-  return { audio, mime, filename };
+  const transcript64 = match[4] || "";
+  if (transcript64.length % 4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(transcript64)) {
+    throw Object.assign(new Error("Transcrição inválida."), { status: 422 });
+  }
+  const transcriptBytes = Buffer.from(transcript64, "base64");
+  if (transcriptBytes.length > MAX_TRANSCRIPT_BYTES) {
+    throw Object.assign(new Error("Transcrição muito grande."), { status: 413 });
+  }
+  const transcript = transcriptBytes.toString("utf8");
+  return { audio, mime, filename, transcript };
 }
 
 export default async function handler(req, res) {
@@ -70,7 +83,10 @@ export default async function handler(req, res) {
     const declaredLength = Number(upstream.headers.get("content-length") || 0);
     if (declaredLength > MAX_TEXT_BYTES) return json(res, 413, { ok: false, error: "Arquivo de áudio acima do limite permitido." });
     const text = await upstream.text();
-    const { audio, mime, filename } = parseAudioText(text);
+    const { audio, mime, filename, transcript } = parseAudioText(text);
+    if (req.body?.format === "metadata") {
+      return json(res, 200, { mime, filename, transcript });
+    }
     res.statusCode = 200;
     res.setHeader("Content-Type", mime);
     res.setHeader("Content-Length", String(audio.length));

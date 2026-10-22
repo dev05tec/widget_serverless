@@ -24,8 +24,15 @@ Consulte [os limites das Functions](https://vercel.com/docs/functions/limitation
 
 `POST /api/audio-from-txt` recebe `{ "url": "https://uploads-tiflux.s3.amazonaws.com/.../audio.txt?..." }`.
 A função busca o TXT no servidor (evitando o CORS do navegador), valida o formato
-`TIFLUX_AUDIO_V1`, decodifica o campo `BASE64` e responde com os bytes do áudio e
+`TIFLUX_AUDIO_V1` ou `TIFLUX_AUDIO_V2`, decodifica o campo `BASE64` e responde com os bytes do áudio e
 o MIME informado no arquivo. O player do frontend usa essa rota para mostrar o
 áudio no chat. Por segurança, só aceita HTTPS no host `uploads-tiflux.s3.amazonaws.com`,
 não segue redirecionamentos e limita o áudio a 4 MB. `ALLOWED_ORIGIN` também se
 aplica a esta rota.
+
+O widget inclui o áudio em um arquivo `.txt` na fila nativa de anexos. No formato
+V2, o campo `TRANSCRIPT_BASE64` contém a transcrição em UTF-8 codificada em Base64.
+O widget reproduz somente o áudio; a extensão exibe também a transcrição no Tiflux.
+Para obter a transcrição, envie `format: "metadata"` junto da URL: a resposta será
+`{ "mime": "audio/webm", "filename": "gravacao.webm", "transcript": "..." }`.
+Publique a versão atualizada desta função junto com o frontend e recarregue a extensão.
