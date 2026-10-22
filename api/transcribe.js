@@ -46,7 +46,14 @@ function parseAudio(req) {
       }
       fileSeen = true;
       filename = String(info.filename || filename).replace(/[\\/\r\n]/g, "_").slice(0, 120);
-      mimeType = info.mimeType || mimeType;
+      mimeType = String(info.mimeType || mimeType).split(";", 1)[0].trim().toLowerCase();
+      if (!/\.[a-z0-9]+$/i.test(filename)) {
+        const extension = {
+          "audio/webm": "webm", "audio/ogg": "ogg", "audio/mpeg": "mp3",
+          "audio/mp4": "m4a", "audio/wav": "wav", "audio/flac": "flac",
+        }[mimeType] || "webm";
+        filename += `.${extension}`;
+      }
       const chunks = [];
       let size = 0;
       stream.on("limit", () => { tooLarge = true; });
@@ -103,7 +110,11 @@ export default async function handler(req, res) {
   try {
     uploaded = await parseAudio(req);
   } catch (error) {
-    return sendJson(res, error.status || 400, { ok: false, error: error.message });
+    const status = error.status || 400;
+    const message = status === 413
+      ? "O áudio excede o limite de 4 MB. Escolha um arquivo menor."
+      : "Não foi possível ler o arquivo de áudio. Verifique o arquivo e tente novamente.";
+    return sendJson(res, status, { ok: false, error: message });
   }
 
   let lastStatus = 502;
@@ -123,7 +134,8 @@ export default async function handler(req, res) {
         body: form,
         signal: AbortSignal.timeout(90_000),
       });
-    } catch {
+    } catch (error) {
+      console.error("Groq transcription request failed:", error?.name || "UnknownError");
       continue;
     }
 
@@ -134,6 +146,12 @@ export default async function handler(req, res) {
       return sendJson(res, 200, { ok: true, text });
     }
     lastStatus = response.status;
+    const providerError = await response.text().catch(() => "");
+    console.error("Groq transcription failed:", {
+      model,
+      status: response.status,
+      error: providerError.slice(0, 1000),
+    });
     if (response.status !== 429) break;
   }
 

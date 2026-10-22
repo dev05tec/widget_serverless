@@ -2,6 +2,9 @@
   "functions": {
     "api/transcribe.js": {
       "maxDuration": 90
+    },
+    "api/audio-from-txt.js": {
+      "maxDuration": 30
     }
   }
 }

@@ -19,3 +19,13 @@ A função oferece `GET /api/transcribe` para verificação e `POST /api/transcr
 para enviar o áudio. O limite foi ajustado para 4 MB porque o corpo de uma
 requisição de Vercel Function tem limite de 4,5 MB, incluindo o multipart.
 Consulte [os limites das Functions](https://vercel.com/docs/functions/limitations).
+
+## Reproduzir áudio de TXT estruturado
+
+`POST /api/audio-from-txt` recebe `{ "url": "https://uploads-tiflux.s3.amazonaws.com/.../audio.txt?..." }`.
+A função busca o TXT no servidor (evitando o CORS do navegador), valida o formato
+`TIFLUX_AUDIO_V1`, decodifica o campo `BASE64` e responde com os bytes do áudio e
+o MIME informado no arquivo. O player do frontend usa essa rota para mostrar o
+áudio no chat. Por segurança, só aceita HTTPS no host `uploads-tiflux.s3.amazonaws.com`,
+não segue redirecionamentos e limita o áudio a 4 MB. `ALLOWED_ORIGIN` também se
+aplica a esta rota.
