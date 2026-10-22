@@ -1,7 +1,10 @@
 const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
 const MAX_TRANSCRIPT_BYTES = 64 * 1024;
 const MAX_TEXT_BYTES = Math.ceil((MAX_AUDIO_BYTES + MAX_TRANSCRIPT_BYTES) * 4 / 3) + 4096;
-const ALLOWED_HOST = "uploads-tiflux.s3.amazonaws.com";
+const ALLOWED_HOSTS = new Set([
+  "uploads-tiflux.s3.amazonaws.com",
+  "uploads-tiflux.s3.sa-east-1.amazonaws.com",
+]);
 
 function json(res, status, payload) {
   res.statusCode = status;
@@ -73,7 +76,7 @@ export default async function handler(req, res) {
   } catch {
     return json(res, 400, { ok: false, error: "URL do arquivo inválida." });
   }
-  if (url.protocol !== "https:" || url.hostname !== ALLOWED_HOST || url.port || !url.pathname.toLowerCase().endsWith(".txt")) {
+  if (url.protocol !== "https:" || !ALLOWED_HOSTS.has(url.hostname) || url.port || !url.pathname.toLowerCase().endsWith(".txt")) {
     return json(res, 400, { ok: false, error: "URL do arquivo não autorizada." });
   }
 

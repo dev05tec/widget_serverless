@@ -26,8 +26,9 @@ Consulte [os limites das Functions](https://vercel.com/docs/functions/limitation
 A função busca o TXT no servidor (evitando o CORS do navegador), valida o formato
 `TIFLUX_AUDIO_V1` ou `TIFLUX_AUDIO_V2`, decodifica o campo `BASE64` e responde com os bytes do áudio e
 o MIME informado no arquivo. O player do frontend usa essa rota para mostrar o
-áudio no chat. Por segurança, só aceita HTTPS no host `uploads-tiflux.s3.amazonaws.com`,
-não segue redirecionamentos e limita o áudio a 4 MB. `ALLOWED_ORIGIN` também se
+áudio no chat. Por segurança, só aceita HTTPS nos hosts `uploads-tiflux.s3.amazonaws.com`
+e `uploads-tiflux.s3.sa-east-1.amazonaws.com`, não segue redirecionamentos e limita
+o áudio a 4 MB. `ALLOWED_ORIGIN` também se
 aplica a esta rota.
 
 O widget inclui o áudio em um arquivo `.txt` na fila nativa de anexos. No formato
