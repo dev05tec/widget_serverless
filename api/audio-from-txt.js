@@ -90,6 +90,10 @@ export default async function handler(req, res) {
     if (req.body?.format === "metadata") {
       return json(res, 200, { mime, filename, transcript });
     }
+    // Mantém a resposta JSON abaixo do limite da Vercel; áudios maiores seguem em bytes.
+    if (req.body?.format === "base64" && audio.length <= 3 * 1024 * 1024) {
+      return json(res, 200, { mime, filename, transcript, base64: audio.toString("base64") });
+    }
     res.statusCode = 200;
     res.setHeader("Content-Type", mime);
     res.setHeader("Content-Length", String(audio.length));

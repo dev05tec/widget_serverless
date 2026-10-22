@@ -31,9 +31,27 @@ e `uploads-tiflux.s3.sa-east-1.amazonaws.com`, não segue redirecionamentos e li
 o áudio a 4 MB. `ALLOWED_ORIGIN` também se
 aplica a esta rota.
 
-O widget inclui o áudio em um arquivo `.txt` na fila nativa de anexos. No formato
-V2, o campo `TRANSCRIPT_BASE64` contém a transcrição em UTF-8 codificada em Base64.
-O widget reproduz somente o áudio; a extensão exibe também a transcrição no Tiflux.
-Para obter a transcrição, envie `format: "metadata"` junto da URL: a resposta será
+O widget inclui o áudio em um arquivo `.txt` V1 na fila nativa de anexos e envia
+a transcrição como mensagem de texto separada no mesmo envio:
+
+```text
+[TIFLUX-AUDIO-TRANSCRIPT V1]
+Arquivo: audio_identificador.txt
+
+Texto da transcrição.
+```
+
+O widget reconhece o marcador na primeira linha e oculta toda a mensagem de
+transcrição, inclusive ao recarregar o histórico. O Tiflux recebe o texto legível.
+A extensão continua exibindo o player do anexo para os dois lados da conversa.
+
+Arquivos V2 antigos com `TRANSCRIPT_BASE64` continuam compatíveis.
+Para obter a transcrição desses arquivos, envie `format: "metadata"` junto da URL: a resposta será
 `{ "mime": "audio/webm", "filename": "gravacao.webm", "transcript": "..." }`.
 Publique a versão atualizada desta função junto com o frontend e recarregue a extensão.
+
+Com `format: "base64"`, áudios de até 3 MB retornam JSON com `mime`, `filename`,
+`transcript` e `base64`. Acima desse tamanho, a resposta continua sendo binária
+para respeitar o limite de resposta da Vercel. A extensão faz as requisições pelo
+service worker, com a permissão de acesso à API, e converte o Base64 em `Blob`
+para o player. Também aceita a resposta binária da API anterior.
