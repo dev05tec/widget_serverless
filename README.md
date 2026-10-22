@@ -32,7 +32,7 @@ o áudio a 4 MB. `ALLOWED_ORIGIN` também se
 aplica a esta rota.
 
 O widget inclui o áudio em um arquivo `.txt` V1 na fila nativa de anexos e envia
-a transcrição como mensagem de texto separada no mesmo envio:
+a transcrição como mensagem de texto separada após o anexo aparecer no histórico:
 
 ```text
 [TIFLUX-AUDIO-TRANSCRIPT V1]
@@ -44,6 +44,9 @@ Texto da transcrição.
 O widget reconhece o marcador na primeira linha e oculta toda a mensagem de
 transcrição, inclusive ao recarregar o histórico. O Tiflux recebe o texto legível.
 A extensão continua exibindo o player do anexo para os dois lados da conversa.
+O texto digitado e os anexos usam o envio nativo do widget. A transcrição usa a
+rota `/widget/{token}/message` com a mesma sessão, sem alterar o conteúdo do editor.
+Se esse envio falhar, o widget oferece a opção de reenviar somente a transcrição.
 
 Arquivos V2 antigos com `TRANSCRIPT_BASE64` continuam compatíveis.
 Para obter a transcrição desses arquivos, envie `format: "metadata"` junto da URL: a resposta será
